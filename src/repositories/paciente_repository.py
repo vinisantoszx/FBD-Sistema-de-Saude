@@ -5,9 +5,6 @@ from src.database import get_engine
 
 
 def listar_pacientes() -> pd.DataFrame:
-    """
-    Lista todos os pacientes cadastrados no banco de dados.
-    """
     engine = get_engine()
 
     query = """
@@ -26,9 +23,6 @@ def listar_pacientes() -> pd.DataFrame:
 
 
 def cadastrar_paciente(nome_completo, cpf, data_nascimento, email, senha) -> None:
-    """
-    Cadastra um novo paciente no banco de dados.
-    """
     engine = get_engine()
 
     query = text("""
@@ -61,10 +55,14 @@ def cadastrar_paciente(nome_completo, cpf, data_nascimento, email, senha) -> Non
         )
 
 
-def atualizar_paciente(id_paciente, nome_completo, cpf, data_nascimento, email, senha) -> None:
-    """
-    Atualiza os dados de um paciente existente.
-    """
+def atualizar_paciente(
+    id_paciente,
+    nome_completo,
+    cpf,
+    data_nascimento,
+    email,
+    senha,
+) -> None:
     engine = get_engine()
 
     query = text("""
@@ -93,9 +91,6 @@ def atualizar_paciente(id_paciente, nome_completo, cpf, data_nascimento, email, 
 
 
 def excluir_paciente(id_paciente) -> None:
-    """
-    Exclui um paciente pelo ID.
-    """
     engine = get_engine()
 
     query = text("""
