@@ -197,9 +197,3 @@ layout = pn.template.FastListTemplate(
 )
 
 layout.servable()
-
-
-from src.database import testar_conexao_sqlalchemy, testar_conexao_psycopg2
-
-print(testar_conexao_sqlalchemy())
-print(testar_conexao_psycopg2())
