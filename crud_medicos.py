@@ -1,70 +1,47 @@
 import panel as pn
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.orm import declarative_base, sessionmaker
-from urllib.parse import quote_plus
+import pandas as pd
+from database import SessionLocal, Medico, init_db
 
+init_db()
 pn.extension(notifications=True)
 
-senha = quote_plus("sebaesses123")
-db_url = f'postgresql+pg8000://postgres:{senha}@127.0.0.1:5432/hospital'
+input_nome = pn.widgets.TextInput(name='Nome Completo')
+input_crm = pn.widgets.TextInput(name='CRM')
+input_espec = pn.widgets.TextInput(name='Especialidade')
+btn_salvar = pn.widgets.Button(name='Salvar Médico', button_type='primary')
 
-engine = create_engine(db_url)
-Base = declarative_base()
-Session = sessionmaker(bind=engine)
+tabela_medicos = pn.widgets.Tabulator(pd.DataFrame(), name='Médicos Cadastrados')
 
-class Medico(Base):
-    __tablename__ = 'medicos'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    nome_completo = Column(String, nullable=False)
-    crm = Column(String, unique=True, nullable=False)
-    especialidade = Column(String)
-
-Base.metadata.create_all(engine)
-
-input_nome = pn.widgets.TextInput(name='Nome Completo', placeholder='Digite o nome...')
-input_crm = pn.widgets.TextInput(name='CRM', placeholder='Digite o CRM...')
-input_espec = pn.widgets.TextInput(name='Especialidade', placeholder='Digite a especialidade...')
-btn_salvar = pn.widgets.Button(name='Confirmar Cadastro', button_type='primary', icon='device-floppy')
+def carregar_dados():
+    session = SessionLocal()
+    medicos = session.query(Medico).all()
+    df = pd.DataFrame([{'ID': m.id, 'Nome': m.nome_completo, 'CRM': m.crm, 'Especialidade': m.especialidade} for m in medicos])
+    tabela_medicos.value = df
+    session.close()
 
 def salvar_medico(event):
-    if not input_nome.value or not input_crm.value:
-        pn.state.notifications.error("Nome e CRM são obrigatórios!")
-        return
-        
-    session = Session()
+    session = SessionLocal()
     try:
-        novo = Medico(
-            nome_completo=input_nome.value,
-            crm=input_crm.value,
-            especialidade=input_espec.value
-        )
+        novo = Medico(nome_completo=input_nome.value, crm=input_crm.value, especialidade=input_espec.value)
         session.add(novo)
         session.commit()
-        pn.state.notifications.success(f"Médico {input_nome.value} cadastrado!")
-        input_nome.value = ""
-        input_crm.value = ""
-        input_espec.value = ""
-    except Exception as e:
+        pn.state.notifications.success("Médico salvo!")
+        carregar_dados() 
+    except Exception:
         session.rollback()
-        pn.state.notifications.error(f"Erro: {e}")
+        pn.state.notifications.error("Erro: CRM já cadastrado ou falha.")
     finally:
         session.close()
 
 btn_salvar.on_click(salvar_medico)
 
-layout = pn.Column(
-    "# Formulário de Cadastro",
-    input_nome, 
-    input_crm, 
-    input_espec, 
-    btn_salvar,
-    width=400,
-    margin=(20, 20)
-)
+carregar_dados()
 
-pn.template.FastListTemplate(
-    title="Sistema Hospitalar - Gestão de Médicos",
-    main=[layout],
-    accent_base_color="#2F4F4F",
-    header_background="#2F4F4F",
-).servable()
+template = pn.template.FastListTemplate(
+    title="Sistema Hospitalar",
+    main=[
+        pn.Card(input_nome, input_crm, input_espec, btn_salvar, title="Cadastro"),
+        pn.Card(tabela_medicos, title="Médicos Cadastrados")
+    ]
+)
+template.servable()
