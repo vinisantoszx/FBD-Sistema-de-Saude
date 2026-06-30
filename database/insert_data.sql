@@ -1,3 +1,6 @@
+TRUNCATE TABLE medico_especialidade RESTART IDENTITY CASCADE;
+TRUNCATE TABLE medico RESTART IDENTITY CASCADE;
+TRUNCATE TABLE especialidade RESTART IDENTITY CASCADE;
 TRUNCATE TABLE paciente RESTART IDENTITY CASCADE;
 
 INSERT INTO paciente (
@@ -18,3 +21,49 @@ VALUES
 ('Rafael Almeida Pereira', '888.888.888-88', '1997-12-19', 'rafael.pereira@email.com', '123456'),
 ('Camila Ferreira Gomes', '999.999.999-99', '2004-04-22', 'camila.gomes@email.com', '123456'),
 ('Eduardo Nunes Carvalho', '000.000.000-00', '1996-06-30', 'eduardo.carvalho@email.com', '123456');
+
+INSERT INTO especialidade (nome_especialidade)
+VALUES
+('Clínico Geral'),
+('Cardiologia'),
+('Dermatologia'),
+('Pediatria'),
+('Neurologia'),
+('Ortopedia'),
+('Ginecologia'),
+('Psiquiatria'),
+('Endocrinologia'),
+('Oftalmologia');
+
+INSERT INTO medico (
+    nome_completo,
+    crm
+)
+VALUES
+('Dra. Mariana Almeida Costa', 'CRM-CE 10001'),
+('Dr. Rafael Henrique Lima', 'CRM-CE 10002'),
+('Dra. Camila Ferreira Rocha', 'CRM-CE 10003'),
+('Dr. Lucas Martins Oliveira', 'CRM-CE 10004'),
+('Dra. Beatriz Santos Nunes', 'CRM-CE 10005'),
+('Dr. Carlos Eduardo Pereira', 'CRM-CE 10006'),
+('Dra. Fernanda Ribeiro Gomes', 'CRM-CE 10007'),
+('Dr. João Pedro Carvalho', 'CRM-CE 10008'),
+('Dra. Ana Paula Sousa', 'CRM-CE 10009'),
+('Dr. Eduardo Nunes Batista', 'CRM-CE 10010');
+
+INSERT INTO medico_especialidade (
+    id_medico,
+    id_especialidade
+)
+VALUES
+(1, 1),
+(1, 2),
+(2, 2),
+(3, 3),
+(4, 4),
+(5, 5),
+(6, 6),
+(7, 7),
+(8, 8),
+(9, 9),
+(10, 10);
