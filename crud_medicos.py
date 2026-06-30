@@ -1,47 +1,123 @@
 import panel as pn
 import pandas as pd
-from database import SessionLocal, Medico, init_db
+from database import SessionLocal, Medico, Especialidade, init_db
 
 init_db()
 pn.extension(notifications=True)
 
-input_nome = pn.widgets.TextInput(name='Nome Completo')
-input_crm = pn.widgets.TextInput(name='CRM')
-input_espec = pn.widgets.TextInput(name='Especialidade')
-btn_salvar = pn.widgets.Button(name='Salvar Médico', button_type='primary')
+pn.config.raw_css.append("""
+    body, .main, .card { background-color: #ffffff !important; color: #000000 !important; }
+    .tabulator { background-color: #ffffff !important; }
+    .tabulator-cell { white-space: normal !important; word-wrap: break-word !important; }
+""")
 
-tabela_medicos = pn.widgets.Tabulator(pd.DataFrame(), name='Médicos Cadastrados')
+input_nome = pn.widgets.TextInput(name='Nome Completo', sizing_mode='stretch_width')
+input_crm = pn.widgets.TextInput(name='CRM', sizing_mode='stretch_width')
+input_especs = pn.widgets.MultiChoice(name='Especialidades', options=[e.nome for e in SessionLocal().query(Especialidade).all()], sizing_mode='stretch_width')
+input_id = pn.widgets.TextInput(name='ID', visible=False)
+
+btn_salvar = pn.widgets.Button(name='Salvar Médico', button_type='primary')
+btn_deletar = pn.widgets.Button(name='Remover Selecionado', button_type='danger')
+btn_editar = pn.widgets.Button(name='Editar Selecionado', button_type='warning')
+
+container_tabela = pn.Column()
 
 def carregar_dados():
     session = SessionLocal()
     medicos = session.query(Medico).all()
-    df = pd.DataFrame([{'ID': m.id, 'Nome': m.nome_completo, 'CRM': m.crm, 'Especialidade': m.especialidade} for m in medicos])
-    tabela_medicos.value = df
+    dados = []
+    for m in medicos:
+        # Mantém a limpeza no nível dos dados
+        nomes = sorted(list(set([e.nome for e in m.especialidades])))
+        dados.append({'ID': m.id, 'Nome': m.nome_completo, 'CRM': m.crm, 'Especialidade': ", ".join(nomes)})
+    
+    # Força a ordem e a existência exata das 4 colunas no Pandas
+    df = pd.DataFrame(dados, columns=['ID', 'Nome', 'CRM', 'Especialidade'])
+    
+    # Removemos o configuration JS e usamos os parâmetros nativos do Panel
+    nova_tabela = pn.widgets.Tabulator(
+        df, 
+        selectable='checkbox', 
+        disabled=True, 
+        sizing_mode='stretch_width',
+        widths={'ID': 50, 'Nome': 150, 'CRM': 100} 
+    )
+    
+    container_tabela.objects = [nova_tabela]
+    input_especs.options = [e.nome for e in session.query(Especialidade).all()]
     session.close()
+    return nova_tabela
 
 def salvar_medico(event):
     session = SessionLocal()
     try:
-        novo = Medico(nome_completo=input_nome.value, crm=input_crm.value, especialidade=input_espec.value)
-        session.add(novo)
+        nomes = input_especs.value
+        especs_objs = session.query(Especialidade).filter(Especialidade.nome.in_(nomes)).all()
+        if input_id.value:
+            medico = session.query(Medico).filter(Medico.id == int(input_id.value)).first()
+            medico.nome_completo = input_nome.value
+            medico.crm = input_crm.value
+            medico.especialidades[:] = especs_objs 
+        else:
+            novo = Medico(nome_completo=input_nome.value, crm=input_crm.value, especialidades=especs_objs)
+            session.add(novo)
         session.commit()
-        pn.state.notifications.success("Médico salvo!")
-        carregar_dados() 
-    except Exception:
-        session.rollback()
-        pn.state.notifications.error("Erro: CRM já cadastrado ou falha.")
     finally:
         session.close()
+    carregar_dados()
+    pn.state.notifications.success("Salvo com sucesso!")
+
+def editar_medico(event):
+    tab = container_tabela.objects[0]
+    if not tab.selection: return
+    row = tab.value.iloc[tab.selection[0]]
+    input_id.value = str(row['ID'])
+    input_nome.value = row['Nome']
+    input_crm.value = row['CRM']
+    input_especs.value = row['Especialidade'].split(', ') if row['Especialidade'] else []
+
+def deletar_medico(event):
+    tab = container_tabela.objects[0]
+    
+    # Se nada estiver selecionado, não faz nada
+    if not tab.selection: 
+        return
+    
+    # Cria uma lista com todos os IDs das linhas que foram marcadas
+    ids_para_deletar = [int(tab.value.iloc[idx]['ID']) for idx in tab.selection]
+    
+    session = SessionLocal()
+    try:
+        # Passa por cada ID selecionado e deleta do banco
+        for id_medico in ids_para_deletar:
+            medico = session.query(Medico).filter(Medico.id == id_medico).first()
+            if medico:
+                session.delete(medico)
+        
+        # Comita (salva) todas as exclusões de uma vez só
+        session.commit()
+        pn.state.notifications.success(f"{len(ids_para_deletar)} médico(s) removido(s) com sucesso!")
+    except Exception as e:
+        session.rollback()
+        pn.state.notifications.error("Erro ao remover os registros.")
+    finally:
+        session.close()
+        
+    # Recarrega a tabela para atualizar a visualização
+    carregar_dados()
 
 btn_salvar.on_click(salvar_medico)
+btn_deletar.on_click(deletar_medico)
+btn_editar.on_click(editar_medico)
 
 carregar_dados()
 
 template = pn.template.FastListTemplate(
-    title="Sistema Hospitalar",
-    main=[
-        pn.Card(input_nome, input_crm, input_espec, btn_salvar, title="Cadastro"),
-        pn.Card(tabela_medicos, title="Médicos Cadastrados")
-    ]
+    title="🏥 Sistema de Gestão Hospitalar",
+    sidebar=["## Cadastro", input_id, input_nome, input_crm, input_especs, btn_salvar],
+    main=[pn.Card(container_tabela, title="Médicos Cadastrados", sizing_mode='stretch_width'), pn.Row(btn_editar, btn_deletar)],
+    accent_base_color="#1f77b4",
+    header_background="#1f77b4",
+    theme_toggle=False
 )
 template.servable()
