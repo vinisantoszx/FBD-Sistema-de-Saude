@@ -1,3 +1,5 @@
+# MAIN DO PROJETO
+
 import panel as pn
 
 from src.pages.paciente_page import criar_pagina_paciente
