@@ -13,6 +13,13 @@ from src.repositories.medico_repository import (
 def criar_pagina_medico():
     medico_selecionado = {"id_medico": None}
 
+    id_input = pn.widgets.IntInput(
+        name="ID do médico",
+        start=1,
+        value=0,
+        placeholder="Digite o ID para editar ou excluir",
+    )
+
     nome_input = pn.widgets.TextInput(
         name="Nome completo",
         placeholder="Ex.: Dra. Mariana Costa",
@@ -35,7 +42,7 @@ def criar_pagina_medico():
 
     tabela = pn.widgets.Tabulator(
         pd.DataFrame(),
-        selectable=1,
+        selectable=False,
         show_index=False,
         pagination="local",
         page_size=10,
@@ -61,10 +68,10 @@ def criar_pagina_medico():
     def limpar_formulario():
         medico_selecionado["id_medico"] = None
 
+        id_input.value = 0
         nome_input.value = ""
         crm_input.value = ""
         especialidades_input.value = []
-        tabela.selection = []
 
         mensagem.object = "Formulário limpo."
         mensagem.alert_type = "info"
@@ -102,13 +109,28 @@ def criar_pagina_medico():
             mensagem.alert_type = "danger"
 
     def carregar_para_edicao(event=None):
-        if not tabela.selection:
-            mensagem.object = "Selecione um médico na tabela para editar."
+        id_medico = id_input.value
+
+        if not id_medico or id_medico <= 0:
+            mensagem.object = "Digite um ID válido para carregar o médico."
             mensagem.alert_type = "warning"
             return
 
-        indice = tabela.selection[0]
-        medico = tabela.value.iloc[indice]
+        df = tabela.value
+
+        if df.empty:
+            mensagem.object = "A lista de médicos está vazia."
+            mensagem.alert_type = "warning"
+            return
+
+        resultado = df[df["id_medico"] == id_medico]
+
+        if resultado.empty:
+            mensagem.object = f"Nenhum médico encontrado com ID {id_medico}."
+            mensagem.alert_type = "warning"
+            return
+
+        medico = resultado.iloc[0]
 
         medico_selecionado["id_medico"] = int(medico["id_medico"])
 
@@ -120,12 +142,12 @@ def criar_pagina_medico():
         else:
             especialidades_input.value = []
 
-        mensagem.object = "Médico carregado para edição."
+        mensagem.object = f"Médico ID {id_medico} carregado para edição."
         mensagem.alert_type = "info"
 
     def salvar_edicao(event=None):
         if medico_selecionado["id_medico"] is None:
-            mensagem.object = "Carregue um médico antes de salvar a edição."
+            mensagem.object = "Carregue um médico pelo ID antes de salvar a edição."
             mensagem.alert_type = "warning"
             return
 
@@ -153,14 +175,12 @@ def criar_pagina_medico():
             mensagem.alert_type = "danger"
 
     def excluir(event=None):
-        if not tabela.selection:
-            mensagem.object = "Selecione um médico na tabela para excluir."
+        id_medico = id_input.value
+
+        if not id_medico or id_medico <= 0:
+            mensagem.object = "Digite um ID válido para excluir o médico."
             mensagem.alert_type = "warning"
             return
-
-        indice = tabela.selection[0]
-        medico = tabela.value.iloc[indice]
-        id_medico = int(medico["id_medico"])
 
         try:
             excluir_medico(id_medico)
@@ -168,7 +188,7 @@ def criar_pagina_medico():
             carregar_tabela()
             limpar_formulario()
 
-            mensagem.object = "Médico excluído com sucesso."
+            mensagem.object = f"Médico ID {id_medico} excluído com sucesso."
             mensagem.alert_type = "success"
 
         except Exception as erro:
@@ -181,7 +201,7 @@ def criar_pagina_medico():
     )
 
     botao_carregar = pn.widgets.Button(
-        name="Carregar para edição",
+        name="Carregar por ID",
         button_type="default",
     )
 
@@ -191,7 +211,7 @@ def criar_pagina_medico():
     )
 
     botao_excluir = pn.widgets.Button(
-        name="Excluir",
+        name="Excluir por ID",
         button_type="danger",
     )
 
@@ -214,6 +234,7 @@ def criar_pagina_medico():
 
     formulario = pn.Card(
         pn.Column(
+            id_input,
             nome_input,
             crm_input,
             especialidades_input,

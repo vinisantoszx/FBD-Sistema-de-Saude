@@ -12,6 +12,13 @@ from src.repositories.paciente_repository import (
 def criar_pagina_paciente():
     paciente_selecionado = {"id_paciente": None}
 
+    id_input = pn.widgets.IntInput(
+        name="ID do paciente",
+        start=1,
+        value=0,
+        placeholder="Digite o ID para editar ou excluir",
+    )
+
     nome_input = pn.widgets.TextInput(
         name="Nome completo",
         placeholder="Ex.: Ana Clara Martins",
@@ -43,7 +50,7 @@ def criar_pagina_paciente():
 
     tabela = pn.widgets.Tabulator(
         pd.DataFrame(),
-        selectable=1,
+        selectable=False,
         show_index=False,
         pagination="local",
         page_size=10,
@@ -61,12 +68,12 @@ def criar_pagina_paciente():
     def limpar_formulario():
         paciente_selecionado["id_paciente"] = None
 
+        id_input.value = 0
         nome_input.value = ""
         cpf_input.value = ""
         data_nascimento_input.value = None
         email_input.value = ""
         senha_input.value = ""
-        tabela.selection = []
 
         mensagem.object = "Formulário limpo."
         mensagem.alert_type = "info"
@@ -108,28 +115,50 @@ def criar_pagina_paciente():
             mensagem.alert_type = "danger"
 
     def carregar_para_edicao(event=None):
-        if not tabela.selection:
-            mensagem.object = "Selecione um paciente na tabela para editar."
+        id_paciente = id_input.value
+
+        if not id_paciente or id_paciente <= 0:
+            mensagem.object = "Digite um ID válido para carregar o paciente."
             mensagem.alert_type = "warning"
             return
 
-        indice = tabela.selection[0]
-        paciente = tabela.value.iloc[indice]
+        df = tabela.value
+
+        if df.empty:
+            mensagem.object = "A lista de pacientes está vazia."
+            mensagem.alert_type = "warning"
+            return
+
+        resultado = df[df["id_paciente"] == id_paciente]
+
+        if resultado.empty:
+            mensagem.object = f"Nenhum paciente encontrado com ID {id_paciente}."
+            mensagem.alert_type = "warning"
+            return
+
+        paciente = resultado.iloc[0]
 
         paciente_selecionado["id_paciente"] = int(paciente["id_paciente"])
 
         nome_input.value = paciente["nome_completo"]
         cpf_input.value = paciente["cpf"]
-        data_nascimento_input.value = paciente["data_nascimento"]
+
+        if isinstance(paciente["data_nascimento"], pd.Timestamp):
+            data_nascimento_input.value = paciente["data_nascimento"].date()
+        else:
+            data_nascimento_input.value = pd.to_datetime(
+                paciente["data_nascimento"]
+            ).date()
+
         email_input.value = paciente["email"]
         senha_input.value = paciente["senha"]
 
-        mensagem.object = "Paciente carregado para edição."
+        mensagem.object = f"Paciente ID {id_paciente} carregado para edição."
         mensagem.alert_type = "info"
 
     def salvar_edicao(event=None):
         if paciente_selecionado["id_paciente"] is None:
-            mensagem.object = "Carregue um paciente antes de salvar a edição."
+            mensagem.object = "Carregue um paciente pelo ID antes de salvar a edição."
             mensagem.alert_type = "warning"
             return
 
@@ -159,14 +188,12 @@ def criar_pagina_paciente():
             mensagem.alert_type = "danger"
 
     def excluir(event=None):
-        if not tabela.selection:
-            mensagem.object = "Selecione um paciente na tabela para excluir."
+        id_paciente = id_input.value
+
+        if not id_paciente or id_paciente <= 0:
+            mensagem.object = "Digite um ID válido para excluir o paciente."
             mensagem.alert_type = "warning"
             return
-
-        indice = tabela.selection[0]
-        paciente = tabela.value.iloc[indice]
-        id_paciente = int(paciente["id_paciente"])
 
         try:
             excluir_paciente(id_paciente)
@@ -174,7 +201,7 @@ def criar_pagina_paciente():
             carregar_tabela()
             limpar_formulario()
 
-            mensagem.object = "Paciente excluído com sucesso."
+            mensagem.object = f"Paciente ID {id_paciente} excluído com sucesso."
             mensagem.alert_type = "success"
 
         except Exception as erro:
@@ -187,7 +214,7 @@ def criar_pagina_paciente():
     )
 
     botao_carregar = pn.widgets.Button(
-        name="Carregar para edição",
+        name="Carregar por ID",
         button_type="default",
     )
 
@@ -197,7 +224,7 @@ def criar_pagina_paciente():
     )
 
     botao_excluir = pn.widgets.Button(
-        name="Excluir",
+        name="Excluir por ID",
         button_type="danger",
     )
 
@@ -220,6 +247,7 @@ def criar_pagina_paciente():
 
     formulario = pn.Card(
         pn.Column(
+            id_input,
             nome_input,
             cpf_input,
             data_nascimento_input,
