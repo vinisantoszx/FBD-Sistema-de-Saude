@@ -50,6 +50,7 @@ def salvar_medico(event):
     try:
         nomes = input_especs.value
         especs_objs = session.query(Especialidade).filter(Especialidade.nome.in_(nomes)).all()
+        
         if input_id.value:
             medico = session.query(Medico).filter(Medico.id == int(input_id.value)).first()
             medico.nome_completo = input_nome.value
@@ -58,11 +59,22 @@ def salvar_medico(event):
         else:
             novo = Medico(nome_completo=input_nome.value, crm=input_crm.value, especialidades=especs_objs)
             session.add(novo)
+            
         session.commit()
+        pn.state.notifications.success("Salvo com sucesso!")
+        
+    except Exception as e:
+        session.rollback()
+        pn.state.notifications.error(f"Erro ao salvar: verifique se o CRM já está em uso.")
     finally:
         session.close()
+    
+    input_id.value = ""
+    input_nome.value = ""
+    input_crm.value = ""
+    input_especs.value = []
+    
     carregar_dados()
-    pn.state.notifications.success("Salvo com sucesso!")
 
 def editar_medico(event):
     tab = container_tabela.objects[0]
