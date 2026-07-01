@@ -27,14 +27,11 @@ def carregar_dados():
     medicos = session.query(Medico).all()
     dados = []
     for m in medicos:
-        # Mantém a limpeza no nível dos dados
         nomes = sorted(list(set([e.nome for e in m.especialidades])))
         dados.append({'ID': m.id, 'Nome': m.nome_completo, 'CRM': m.crm, 'Especialidade': ", ".join(nomes)})
     
-    # Força a ordem e a existência exata das 4 colunas no Pandas
     df = pd.DataFrame(dados, columns=['ID', 'Nome', 'CRM', 'Especialidade'])
     
-    # Removemos o configuration JS e usamos os parâmetros nativos do Panel
     nova_tabela = pn.widgets.Tabulator(
         df, 
         selectable='checkbox', 
@@ -79,22 +76,18 @@ def editar_medico(event):
 def deletar_medico(event):
     tab = container_tabela.objects[0]
     
-    # Se nada estiver selecionado, não faz nada
     if not tab.selection: 
         return
     
-    # Cria uma lista com todos os IDs das linhas que foram marcadas
     ids_para_deletar = [int(tab.value.iloc[idx]['ID']) for idx in tab.selection]
     
     session = SessionLocal()
     try:
-        # Passa por cada ID selecionado e deleta do banco
         for id_medico in ids_para_deletar:
             medico = session.query(Medico).filter(Medico.id == id_medico).first()
             if medico:
                 session.delete(medico)
         
-        # Comita (salva) todas as exclusões de uma vez só
         session.commit()
         pn.state.notifications.success(f"{len(ids_para_deletar)} médico(s) removido(s) com sucesso!")
     except Exception as e:
@@ -103,7 +96,6 @@ def deletar_medico(event):
     finally:
         session.close()
         
-    # Recarrega a tabela para atualizar a visualização
     carregar_dados()
 
 btn_salvar.on_click(salvar_medico)
