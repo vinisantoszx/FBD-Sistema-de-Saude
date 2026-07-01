@@ -19,7 +19,7 @@ layout = pn.template.FastListTemplate(
     sidebar=[
         pn.pane.Markdown("## Menu"),
         pn.pane.Markdown("CRUD integrado ao PostgreSQL."),
-        pn.pane.Markdown("Telas disponíveis: Pacientes e Médicos."),
+        pn.pane.Markdown("Telas disponíveis: Pacientes, Médicos e Exames."),
     ],
     main=[
         abas,
